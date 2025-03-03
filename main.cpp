@@ -1,7 +1,11 @@
+#include <algorithm>
 #include <array>
 #include <chrono>
 #include <iostream>
 #include <thread>
+
+constexpr std::size_t MAP_WIDTH = 8;
+constexpr std::size_t MAP_HEIGHT = 8;
 
 class Tetris final
 {
@@ -13,13 +17,13 @@ public:
 
 private:
     void runGame();
-    void renderScene();
+    void renderScene() const;
     void processInput();
     void update();
     void prepareFrames();
     void prepareMap();
 
-    std::array<char, 12 * 36> map {};
+    std::array<char, MAP_WIDTH * MAP_HEIGHT> map_ {};
 
     bool isRunning_ = true;
 };
@@ -35,17 +39,23 @@ int main(int, char**)
 
 void Tetris::runGame()
 {
+    prepareMap();
+
     while (isRunning_)
     {
         prepareFrames();
         processInput();
         update();
         renderScene();
+
+        system("cls");
     }
 }
 
-void Tetris::renderScene()
+void Tetris::renderScene() const
 {
+    std::for_each(map_.cbegin(), map_.cend(), [](auto el) {std::cout << el; });
+    std::cout << std::endl;
 }
 
 void Tetris::processInput()
@@ -77,4 +87,17 @@ void Tetris::prepareFrames()
 
 void Tetris::prepareMap()
 {
+    for (std::size_t i = 0; i < MAP_WIDTH; ++i) {
+        for (size_t j = 0; j < MAP_HEIGHT; ++j)
+        {
+            if (i % MAP_WIDTH == 0 && i != 0) {
+                map_[i] = '\n';
+                continue;
+            }
+
+            if (i < MAP_WIDTH || i >= MAP_WIDTH * MAP_HEIGHT - MAP_WIDTH || i == j * MAP_WIDTH) {
+                map_[i] = '#';
+            }
+        }
+    }
 }
