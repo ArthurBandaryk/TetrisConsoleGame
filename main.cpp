@@ -1,18 +1,16 @@
+#include <Windows.h>
 #include <algorithm>
 #include <array>
-#include <chrono>
 #include <cassert>
+#include <chrono>
 #include <memory>
 #include <thread>
-
-#include <Windows.h>
 
 using consoleDeleter = void (*)(void* console);
 
 constexpr std::size_t MAP_WIDTH = 8;
 constexpr std::size_t MAP_HEIGHT = 8;
 constexpr std::size_t NUM_CHARACTERS = MAP_WIDTH * MAP_HEIGHT;
-
 
 class Tetris final
 {
@@ -35,12 +33,11 @@ private:
     void prepareFrames();
     void prepareMap();
     void prepareConsole();
-    void writeToConsole();
 
     // Need one more byte for '\0' null terminator.
-    std::array<char, NUM_CHARACTERS + 1> map_ {};
+    std::array<char, NUM_CHARACTERS + 1> map_{};
 
-    std::unique_ptr<void, consoleDeleter> console_{ nullptr, nullptr};
+    std::unique_ptr<void, consoleDeleter> console_{ nullptr, nullptr };
 
     bool isRunning_ = true;
 };
@@ -50,7 +47,7 @@ int main(int, char**)
     Tetris tetris{};
 
     tetris.runGame();
-    
+
     return EXIT_SUCCESS;
 }
 
@@ -73,7 +70,15 @@ void Tetris::runGame()
 
 void Tetris::renderScene()
 {
-    writeToConsole();
+    DWORD bytesWritten = 0;
+
+    auto result = WriteConsoleOutputCharacter(console_.get(),
+                                              map_.data(),
+                                              NUM_CHARACTERS,
+                                              { 0, 0 },
+                                              &bytesWritten);
+
+    assert(result);
 }
 
 void Tetris::processInput()
@@ -105,15 +110,18 @@ void Tetris::prepareFrames()
 
 void Tetris::prepareMap()
 {
-    for (std::size_t i = 0; i < MAP_WIDTH; ++i) {
+    for (std::size_t i = 0; i < MAP_WIDTH; ++i)
+    {
         for (std::size_t j = 0; j < MAP_HEIGHT; ++j)
         {
-            if (i % MAP_WIDTH == 0 && i != 0) {
+            if (i % MAP_WIDTH == 0 && i != 0)
+            {
                 map_[i] = '\n';
                 continue;
             }
 
-            if (i < MAP_WIDTH || i >= NUM_CHARACTERS - MAP_WIDTH || i == j * MAP_WIDTH) {
+            if (i < MAP_WIDTH || i >= NUM_CHARACTERS - MAP_WIDTH || i == j * MAP_WIDTH)
+            {
                 map_[i] = '#';
             }
         }
@@ -122,14 +130,14 @@ void Tetris::prepareMap()
     map_[NUM_CHARACTERS] = '\0';
 }
 
-void Tetris::prepareConsole() {
-    HANDLE console = CreateConsoleScreenBuffer(
+void Tetris::prepareConsole()
+{
+    auto console = CreateConsoleScreenBuffer(
         GENERIC_READ | GENERIC_WRITE,
         0,
         nullptr,
         CONSOLE_TEXTMODE_BUFFER,
-        nullptr
-    );
+        nullptr);
 
     assert(console != INVALID_HANDLE_VALUE);
 
@@ -140,19 +148,4 @@ void Tetris::prepareConsole() {
         });
 
     SetConsoleActiveScreenBuffer(console_.get());
-}
-
-void Tetris::writeToConsole()
-{
-    DWORD bytesWritten = 0;
-
-    auto result = WriteConsoleOutputCharacter(
-        console_.get(),
-        map_.data(),
-        NUM_CHARACTERS,
-        { 0, 0 },
-        &bytesWritten
-    );
-
-    assert(result);
 }
