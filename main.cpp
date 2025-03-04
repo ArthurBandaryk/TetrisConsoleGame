@@ -1,29 +1,34 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
-#include <iostream>
 #include <thread>
+#include <iostream>
+#include <exception>
+
+#include <Windows.h>
 
 constexpr std::size_t MAP_WIDTH = 8;
 constexpr std::size_t MAP_HEIGHT = 8;
+constexpr std::size_t NUM_CHARACTERS = MAP_WIDTH * MAP_HEIGHT;
 
 class Tetris final
 {
 public:
-    Tetris()
-    {
-        runGame();
-    }
+    Tetris();
+    ~Tetris();
 
 private:
     void runGame();
-    void renderScene() const;
+    void renderScene();
     void processInput();
     void update();
     void prepareFrames();
     void prepareMap();
+    void prepareConsole();
+    void writeToConsole();
 
-    std::array<char, MAP_WIDTH * MAP_HEIGHT> map_ {};
+    std::array<char, NUM_CHARACTERS + 1> map_ {};
+    void* console_{nullptr};
 
     bool isRunning_ = true;
 };
@@ -37,8 +42,26 @@ int main(int, char**)
         : EXIT_FAILURE;
 }
 
+Tetris::Tetris()
+{
+    runGame();
+}
+
+Tetris::~Tetris()
+{
+    CloseHandle(console_);
+}
+
 void Tetris::runGame()
 {
+    try{ 
+        prepareConsole();
+    }
+    catch (const char* err) {
+        std::cerr << err << std::endl;
+        std::exit(1);
+    }
+
     prepareMap();
 
     while (isRunning_)
@@ -47,15 +70,12 @@ void Tetris::runGame()
         processInput();
         update();
         renderScene();
-
-        system("cls");
     }
 }
 
-void Tetris::renderScene() const
+void Tetris::renderScene()
 {
-    std::for_each(map_.cbegin(), map_.cend(), [](auto el) {std::cout << el; });
-    std::cout << std::endl;
+    writeToConsole();
 }
 
 void Tetris::processInput()
@@ -88,16 +108,45 @@ void Tetris::prepareFrames()
 void Tetris::prepareMap()
 {
     for (std::size_t i = 0; i < MAP_WIDTH; ++i) {
-        for (size_t j = 0; j < MAP_HEIGHT; ++j)
+        for (std::size_t j = 0; j < MAP_HEIGHT; ++j)
         {
             if (i % MAP_WIDTH == 0 && i != 0) {
                 map_[i] = '\n';
                 continue;
             }
 
-            if (i < MAP_WIDTH || i >= MAP_WIDTH * MAP_HEIGHT - MAP_WIDTH || i == j * MAP_WIDTH) {
+            if (i < MAP_WIDTH || i >= NUM_CHARACTERS - MAP_WIDTH || i == j * MAP_WIDTH) {
                 map_[i] = '#';
             }
         }
     }
+
+    map_[NUM_CHARACTERS] = '\0';
 }
+
+void Tetris::prepareConsole() {
+    console_ = CreateConsoleScreenBuffer(
+        GENERIC_READ | GENERIC_WRITE,
+        0,
+        nullptr,
+        CONSOLE_TEXTMODE_BUFFER,
+        nullptr
+    );
+
+    if (console_ == INVALID_HANDLE_VALUE) {
+        throw "Invalid console";
+    }
+
+    SetConsoleActiveScreenBuffer(console_);
+}
+
+void Tetris::writeToConsole()
+{
+    DWORD bytesWritten = 0;
+    auto result = WriteConsoleOutputCharacter(console_, map_.data(), NUM_CHARACTERS, { 0, 0 }, &bytesWritten);
+
+    if (!result) {
+        throw "Write to console failed";
+    }
+}
+
