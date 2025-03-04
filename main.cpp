@@ -1,20 +1,26 @@
 #include <algorithm>
 #include <array>
 #include <chrono>
-#include <thread>
+#include <cassert>
 #include <exception>
+#include <memory>
+#include <thread>
+#include <iostream>
 
 #include <Windows.h>
+
+using consoleDeleter = void (*)(void* console);
 
 constexpr std::size_t MAP_WIDTH = 8;
 constexpr std::size_t MAP_HEIGHT = 8;
 constexpr std::size_t NUM_CHARACTERS = MAP_WIDTH * MAP_HEIGHT;
 
+
 class Tetris final
 {
 public:
     Tetris();
-    ~Tetris();
+    ~Tetris() = default;
 
     Tetris(const Tetris&) = delete;
     Tetris(Tetris&&) = delete;
@@ -36,14 +42,13 @@ private:
     // Need one more byte for '\0' null terminator.
     std::array<char, NUM_CHARACTERS + 1> map_ {};
 
-    void* console_{nullptr};
+    std::unique_ptr<void, consoleDeleter> console_{ nullptr, nullptr};
 
     bool isRunning_ = true;
 };
 
 int main(int, char**)
 {
-    
     Tetris tetris{};
 
     tetris.runGame();
@@ -55,11 +60,6 @@ Tetris::Tetris()
 {
     prepareConsole();
     prepareMap();
-}
-
-Tetris::~Tetris()
-{
-    CloseHandle(console_);
 }
 
 void Tetris::runGame()
@@ -126,7 +126,7 @@ void Tetris::prepareMap()
 }
 
 void Tetris::prepareConsole() {
-    console_ = CreateConsoleScreenBuffer(
+    HANDLE console = CreateConsoleScreenBuffer(
         GENERIC_READ | GENERIC_WRITE,
         0,
         nullptr,
@@ -134,20 +134,28 @@ void Tetris::prepareConsole() {
         nullptr
     );
 
-    if (console_ == INVALID_HANDLE_VALUE) {
-        throw "Invalid console";
-    }
+    assert(console != INVALID_HANDLE_VALUE);
 
-    SetConsoleActiveScreenBuffer(console_);
+    console_ = std::unique_ptr<void, consoleDeleter>(
+        console,
+        [](void* console) {
+            assert(CloseHandle(console));
+        });
+
+    SetConsoleActiveScreenBuffer(console_.get());
 }
 
 void Tetris::writeToConsole()
 {
     DWORD bytesWritten = 0;
-    auto result = WriteConsoleOutputCharacter(console_, map_.data(), NUM_CHARACTERS, { 0, 0 }, &bytesWritten);
 
-    if (!result) {
-        throw "Write to console failed";
-    }
+    auto result = WriteConsoleOutputCharacter(
+        console_.get(),
+        map_.data(),
+        NUM_CHARACTERS,
+        { 0, 0 },
+        &bytesWritten
+    );
+
+    assert(result);
 }
-
