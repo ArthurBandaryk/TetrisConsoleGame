@@ -2,10 +2,8 @@
 #include <array>
 #include <chrono>
 #include <cassert>
-#include <exception>
 #include <memory>
 #include <thread>
-#include <iostream>
 
 #include <Windows.h>
 
@@ -64,7 +62,6 @@ Tetris::Tetris()
 
 void Tetris::runGame()
 {
-    return;
     while (isRunning_)
     {
         prepareFrames();
