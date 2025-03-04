@@ -2,7 +2,6 @@
 #include <array>
 #include <chrono>
 #include <thread>
-#include <iostream>
 #include <exception>
 
 #include <Windows.h>
@@ -17,8 +16,15 @@ public:
     Tetris();
     ~Tetris();
 
-private:
+    Tetris(const Tetris&) = delete;
+    Tetris(Tetris&&) = delete;
+
+    Tetris& operator=(const Tetris&) = delete;
+    Tetris& operator=(Tetris&&) = delete;
+
     void runGame();
+
+private:
     void renderScene();
     void processInput();
     void update();
@@ -27,7 +33,9 @@ private:
     void prepareConsole();
     void writeToConsole();
 
+    // Need one more byte for '\0' null terminator.
     std::array<char, NUM_CHARACTERS + 1> map_ {};
+
     void* console_{nullptr};
 
     bool isRunning_ = true;
@@ -35,16 +43,18 @@ private:
 
 int main(int, char**)
 {
-    Tetris tetris {};
+    
+    Tetris tetris{};
 
-    return std::cout.good()
-        ? EXIT_SUCCESS
-        : EXIT_FAILURE;
+    tetris.runGame();
+    
+    return EXIT_SUCCESS;
 }
 
 Tetris::Tetris()
 {
-    runGame();
+    prepareConsole();
+    prepareMap();
 }
 
 Tetris::~Tetris()
@@ -54,16 +64,7 @@ Tetris::~Tetris()
 
 void Tetris::runGame()
 {
-    try{ 
-        prepareConsole();
-    }
-    catch (const char* err) {
-        std::cerr << err << std::endl;
-        std::exit(1);
-    }
-
-    prepareMap();
-
+    return;
     while (isRunning_)
     {
         prepareFrames();
