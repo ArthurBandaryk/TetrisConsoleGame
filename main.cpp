@@ -1,5 +1,7 @@
+/* clang-format off */
 #include <Windows.h>
-#include <algorithm>
+/* clang-format on */
+
 #include <array>
 #include <cassert>
 #include <chrono>
