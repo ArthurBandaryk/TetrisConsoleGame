@@ -8,9 +8,9 @@
 
 using consoleDeleter = void (*)(void* console);
 
-constexpr std::size_t MAP_WIDTH = 8;
-constexpr std::size_t MAP_HEIGHT = 8;
-constexpr std::size_t NUM_CHARACTERS = MAP_WIDTH * MAP_HEIGHT;
+constexpr std::size_t MAP_WIDTH = 3;
+constexpr std::size_t MAP_HEIGHT = 3;
+constexpr std::size_t NUM_CHARACTERS = (MAP_WIDTH) * (MAP_HEIGHT);
 
 class Tetris final
 {
@@ -35,7 +35,7 @@ private:
     void prepareConsole();
 
     // Need one more byte for '\0' null terminator.
-    std::array<char, NUM_CHARACTERS + 1> map_{};
+    std::array<CHAR_INFO, NUM_CHARACTERS + 1> map_{};
 
     std::unique_ptr<void, consoleDeleter> console_{ nullptr, nullptr };
 
@@ -72,11 +72,15 @@ void Tetris::renderScene()
 {
     DWORD bytesWritten = 0;
 
-    auto result = WriteConsoleOutputCharacter(console_.get(),
-                                              map_.data(),
-                                              NUM_CHARACTERS,
-                                              { 0, 0 },
-                                              &bytesWritten);
+    // Console boundaries for rendering text. See official doc:
+    // https://learn.microsoft.com/en-us/windows/console/writeconsoleoutput
+    SMALL_RECT sr{ 0, 0, MAP_WIDTH, MAP_HEIGHT };
+
+    auto result = WriteConsoleOutput(console_.get(),
+                                     map_.data(),
+                                     { MAP_WIDTH, MAP_HEIGHT },
+                                     { 0, 0 },
+                                     &sr);
 
     assert(result);
 }
@@ -114,20 +118,22 @@ void Tetris::prepareMap()
     {
         for (std::size_t j = 0; j < MAP_HEIGHT; ++j)
         {
-            if (i % MAP_WIDTH == 0 && i != 0)
+            map_[i + j * MAP_WIDTH].Attributes = COLOR_BACKGROUND;
+
+            if (j % MAP_WIDTH == 0 && j != 0)
             {
-                map_[i] = '\n';
+                map_[i + j * MAP_WIDTH].Char.UnicodeChar = L'\n';
                 continue;
             }
 
-            if (i < MAP_WIDTH || i >= NUM_CHARACTERS - MAP_WIDTH || i == j * MAP_WIDTH)
+            if (i * j == 0 || i * j % MAP_WIDTH == 0)
             {
-                map_[i] = '#';
+                map_[i + j * MAP_WIDTH].Char.UnicodeChar = L'#';
             }
         }
     }
 
-    map_[NUM_CHARACTERS] = '\0';
+    map_[NUM_CHARACTERS].Char.UnicodeChar = L'\0';
 }
 
 void Tetris::prepareConsole()
