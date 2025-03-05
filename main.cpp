@@ -8,9 +8,9 @@
 
 using consoleDeleter = void (*)(void* console);
 
-constexpr std::size_t MAP_WIDTH = 3;
-constexpr std::size_t MAP_HEIGHT = 3;
-constexpr std::size_t NUM_CHARACTERS = (MAP_WIDTH) * (MAP_HEIGHT);
+constexpr std::size_t MAP_WIDTH = 72;
+constexpr std::size_t MAP_HEIGHT = 24;
+constexpr std::size_t NUM_CHARACTERS = MAP_WIDTH * MAP_HEIGHT;
 
 class Tetris final
 {
@@ -114,21 +114,17 @@ void Tetris::prepareFrames()
 
 void Tetris::prepareMap()
 {
-    for (std::size_t i = 0; i < MAP_WIDTH; ++i)
+    for (std::size_t i = 0; i < MAP_HEIGHT; ++i)
     {
-        for (std::size_t j = 0; j < MAP_HEIGHT; ++j)
+        for (std::size_t j = 0; j < MAP_WIDTH; ++j)
         {
-            map_[i + j * MAP_WIDTH].Attributes = COLOR_BACKGROUND;
+            const auto index = j + i * MAP_WIDTH;
 
-            if (j % MAP_WIDTH == 0 && j != 0)
-            {
-                map_[i + j * MAP_WIDTH].Char.UnicodeChar = L'\n';
-                continue;
-            }
+            map_[index].Attributes = COLOR_BACKGROUND;
 
-            if (i * j == 0 || i * j % MAP_WIDTH == 0)
+            if (j == 0 || j == MAP_WIDTH - 1 || i == 0 || i == MAP_HEIGHT - 1)
             {
-                map_[i + j * MAP_WIDTH].Char.UnicodeChar = L'#';
+                map_[index].Char.UnicodeChar = L'#';
             }
         }
     }
