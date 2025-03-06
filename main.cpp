@@ -2,10 +2,12 @@
 #include <Windows.h>
 /* clang-format on */
 
+#include <algorithm>
 #include <array>
 #include <cassert>
 #include <chrono>
 #include <memory>
+#include <string_view>
 #include <thread>
 
 using consoleDeleter = void (*)(void* console);
@@ -35,6 +37,7 @@ private:
     void prepareFrames();
     void prepareMap();
     void prepareConsole();
+    void createBlock();
 
     // Need one more byte for '\0' null terminator.
     std::array<CHAR_INFO, NUM_CHARACTERS + 1> map_{};
@@ -78,11 +81,14 @@ void Tetris::renderScene()
     // https://learn.microsoft.com/en-us/windows/console/writeconsoleoutput
     SMALL_RECT sr{ 0, 0, MAP_WIDTH, MAP_HEIGHT };
 
-    auto result = WriteConsoleOutput(console_.get(),
-                                     map_.data(),
-                                     { MAP_WIDTH, MAP_HEIGHT },
-                                     { 0, 0 },
-                                     &sr);
+    createBlock();
+
+    auto result = WriteConsoleOutput(
+        console_.get(),
+        map_.data(),
+        { MAP_WIDTH, MAP_HEIGHT },
+        { 0, 0 },
+        &sr);
 
     assert(result);
 }
@@ -105,10 +111,18 @@ void Tetris::prepareFrames()
 
     static auto prevTickTime = hrClock::now();
 
-    while (deltaTime(hrClock::now() - prevTickTime).count() < GAME_TICK)
+    for (float dt = deltaTime(hrClock::now() - prevTickTime).count(); dt <= GAME_TICK;)
     {
-        using namespace std::chrono_literals;
-        std::this_thread::sleep_for(0.001s);
+        float timeUntilTickRelease = GAME_TICK - dt;
+
+        if (timeUntilTickRelease < 0)
+        {
+            break;
+        }
+
+        auto sleepDelta = std::chrono::duration<float, std::micro>(timeUntilTickRelease);
+
+        std::this_thread::sleep_for(sleepDelta);
     }
 
     prevTickTime = hrClock::now();
@@ -152,4 +166,37 @@ void Tetris::prepareConsole()
         });
 
     SetConsoleActiveScreenBuffer(console_.get());
+}
+
+void Tetris::createBlock()
+{
+    std::string_view block{ "   @      @      @   @@@@@@@" }; // __|__
+
+    constexpr std::size_t BLOCK_WIDTH{ 7 }, BLOCK_HEIGHT{ 4 };
+
+    constexpr std::size_t START_X = MAP_WIDTH >> 1;
+    constexpr std::size_t START_Y = MAP_HEIGHT >> 1;
+
+    CHAR_INFO chBlock[BLOCK_WIDTH * BLOCK_HEIGHT];
+
+    for (std::size_t i = 0; i < block.size(); ++i)
+    {
+        chBlock[i].Char.UnicodeChar = block[i];
+        chBlock[i].Attributes = COLOR_BACKGROUND;
+    }
+
+    SMALL_RECT sr{
+        START_X,
+        START_Y,
+        START_X + BLOCK_WIDTH,
+        START_Y + BLOCK_HEIGHT
+    };
+
+    auto result = WriteConsoleOutput(console_.get(),
+                                     chBlock,
+                                     COORD{ BLOCK_WIDTH, BLOCK_HEIGHT },
+                                     COORD{ 0, 0 },
+                                     &sr);
+
+    assert(result);
 }
