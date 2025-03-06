@@ -2,7 +2,6 @@
 #include <Windows.h>
 /* clang-format on */
 
-#include <algorithm>
 #include <array>
 #include <cassert>
 #include <chrono>
@@ -120,7 +119,7 @@ void Tetris::prepareFrames()
             break;
         }
 
-        auto sleepDelta = std::chrono::duration<float, std::micro>(timeUntilTickRelease);
+        auto sleepDelta = deltaTime(timeUntilTickRelease);
 
         std::this_thread::sleep_for(sleepDelta);
     }
