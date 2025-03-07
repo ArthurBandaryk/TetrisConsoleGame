@@ -37,7 +37,6 @@ private:
     void prepareMap();
     void prepareConsole();
     void createBlock();
-    auto getFrameDuration() const;
 
     // Need one more byte for '\0' null terminator.
     std::array<CHAR_INFO, NUM_CHARACTERS + 1> map_{};
@@ -198,8 +197,4 @@ void Tetris::createBlock()
                                      &sr);
 
     assert(result);
-}
-
-auto Tetris::getFrameDuration() const
-{
 }
