@@ -127,7 +127,7 @@ void Tetris::update()
 
 void Tetris::prepareFrames()
 {
-    using deltaTime = std::chrono::duration<float, std::micro>;
+    using deltaTime = std::chrono::duration<float, std::milli>;
     using hrClock = std::chrono::high_resolution_clock;
 
     constexpr short FRAMES = 60;
@@ -135,19 +135,18 @@ void Tetris::prepareFrames()
 
     static auto prevTickTime = hrClock::now();
 
-    for (float dt = deltaTime(hrClock::now() - prevTickTime).count(); dt <= GAME_TICK;)
+    float realFrameDuration = deltaTime(hrClock::now() - prevTickTime).count();
+    float tickRemainingTime = GAME_TICK - realFrameDuration;
+
+    if (tickRemainingTime < 0)
     {
-        float timeUntilTickRelease = GAME_TICK - dt;
-
-        if (timeUntilTickRelease < 0)
-        {
-            break;
-        }
-
-        auto sleepDelta = deltaTime(timeUntilTickRelease);
-
-        std::this_thread::sleep_for(sleepDelta);
+        prevTickTime = hrClock::now();
+        return;
     }
+
+    auto sleepDelta = deltaTime(tickRemainingTime);
+
+    std::this_thread::sleep_for(sleepDelta);
 
     prevTickTime = hrClock::now();
 }
