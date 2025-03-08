@@ -38,7 +38,6 @@ private:
         T,
         L,
         I,
-        NONE
     };
 
     struct Block
