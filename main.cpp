@@ -6,8 +6,9 @@
 #include <cassert>
 #include <chrono>
 #include <memory>
-#include <string_view>
+#include <string>
 #include <thread>
+#include <unordered_map>
 
 using consoleDeleter = void (*)(void* console);
 
@@ -30,20 +31,45 @@ public:
     void runGame();
 
 private:
+    enum class BlockType
+    {
+        QUAD,
+        Z,
+        T,
+        L,
+        I,
+        NONE
+    };
+
+    struct Block
+    {
+        std::string representation{};
+        COORD size{};
+    };
+
     void renderScene();
     void processInput();
     void update();
     void prepareFrames();
     void prepareMap();
     void prepareConsole();
-    void createBlock();
+    void createBlock(BlockType type, const COORD& position);
+    void createTestBlocks();
 
     // Need one more byte for '\0' null terminator.
     std::array<CHAR_INFO, NUM_CHARACTERS + 1> map_{};
 
+    std::unordered_map<BlockType, Block> blocks_{
+        { BlockType::QUAD, { "@@@@", { 2, 2 } } },
+        { BlockType::Z, { "+++    +++", { 5, 2 } } },
+        { BlockType::T, { "  &  &&&&&", { 5, 2 } } },
+        { BlockType::L, { "%   %%%%", { 4, 2 } } },
+        { BlockType::I, { "KKK", { 1, 3 } } },
+    };
+
     std::unique_ptr<void, consoleDeleter> console_{ nullptr, nullptr };
 
-    bool isRunning_ = true;
+    bool isRunning_{ true };
 };
 
 int main(int, char**)
@@ -59,6 +85,7 @@ Tetris::Tetris()
 {
     prepareConsole();
     prepareMap();
+    createTestBlocks();
 }
 
 void Tetris::runGame()
@@ -79,8 +106,6 @@ void Tetris::renderScene()
     // Console boundaries for rendering text. See official doc:
     // https://learn.microsoft.com/en-us/windows/console/writeconsoleoutput
     SMALL_RECT sr{ 0, 0, MAP_WIDTH, MAP_HEIGHT };
-
-    createBlock();
 
     auto result = WriteConsoleOutput(
         console_.get(),
@@ -137,7 +162,7 @@ void Tetris::prepareMap()
 
             map_[index].Attributes = COLOR_BACKGROUND;
 
-            if (j == 0 || j == MAP_WIDTH - 1 || i == 0 || i == MAP_HEIGHT - 1)
+            if (j == 0 || j == MAP_WIDTH - 1 || i == MAP_HEIGHT - 1)
             {
                 map_[index].Char.UnicodeChar = L'#';
             }
@@ -167,35 +192,41 @@ void Tetris::prepareConsole()
     SetConsoleActiveScreenBuffer(console_.get());
 }
 
-void Tetris::createBlock()
+void Tetris::createBlock(BlockType blockType, const COORD& position)
 {
-    std::string_view block{ "   @      @      @   @@@@@@@" }; // __|__
+    const auto& block = blocks_[blockType];
 
-    constexpr std::size_t BLOCK_WIDTH{ 7 }, BLOCK_HEIGHT{ 4 };
+    const auto blockWidth = block.size.X;
+    const auto blockHeight = block.size.Y;
 
-    constexpr std::size_t START_X = MAP_WIDTH >> 1;
-    constexpr std::size_t START_Y = MAP_HEIGHT >> 1;
-
-    CHAR_INFO chBlock[BLOCK_WIDTH * BLOCK_HEIGHT];
-
-    for (std::size_t i = 0; i < block.size(); ++i)
+    for (std::size_t i = 0; i < blockHeight; ++i)
     {
-        chBlock[i].Char.UnicodeChar = block[i];
-        chBlock[i].Attributes = COLOR_BACKGROUND;
+        for (size_t j = 0; j < blockWidth; j++)
+        {
+            const auto realPos = position.X + position.Y * MAP_WIDTH + i * MAP_WIDTH + j;
+            map_[realPos].Char.UnicodeChar = block.representation[j + i * blockWidth];
+        }
     }
+}
 
-    SMALL_RECT sr{
-        START_X,
-        START_Y,
-        START_X + BLOCK_WIDTH,
-        START_Y + BLOCK_HEIGHT
+void Tetris::createTestBlocks()
+{
+    // Test function which just creates all blocks on random positions.
+    auto generateRandomBlockPosition = [](const Block& block) {
+        short maxX = MAP_WIDTH - block.size.X;
+        short maxY = MAP_HEIGHT - block.size.Y;
+        short minX = 1;
+        short minY = 0;
+
+        return COORD{
+            static_cast<short>(std::rand() % (maxX - minX) + minX),
+            static_cast<short>(std::rand() % (maxY - minY) + minY),
+        };
     };
 
-    auto result = WriteConsoleOutput(console_.get(),
-                                     chBlock,
-                                     COORD{ BLOCK_WIDTH, BLOCK_HEIGHT },
-                                     COORD{ 0, 0 },
-                                     &sr);
-
-    assert(result);
+    for (const auto& [type, block] : blocks_)
+    {
+        const auto pos = generateRandomBlockPosition(block);
+        createBlock(type, pos);
+    }
 }
