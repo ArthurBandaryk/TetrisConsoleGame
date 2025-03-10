@@ -11,6 +11,9 @@
 #include <unordered_map>
 
 using consoleDeleter = void (*)(void* console);
+using dtMilli = std::chrono::duration<float, std::milli>;
+using dtSecs = std::chrono::duration<float>;
+using hrClock = std::chrono::high_resolution_clock;
 
 constexpr std::size_t MAP_WIDTH = 72;
 constexpr std::size_t MAP_HEIGHT = 24;
@@ -31,18 +34,22 @@ public:
     void runGame();
 
 private:
+    /* clang-format off */
     enum class BlockType
     {
-        QUAD,
-        Z,
-        T,
-        L,
-        I,
+        QUAD, Z, T, L, I,
     };
+    /* clang-format on */
 
-    struct Block
+    struct BlockInfo
     {
         std::string representation{};
+        COORD size{};
+    };
+
+    struct MovingBlock
+    {
+        COORD position{};
         COORD size{};
     };
 
@@ -54,11 +61,13 @@ private:
     void prepareConsole();
     void createBlock(BlockType type, const COORD& position);
     void createTestBlocks();
+    void createMover();
+    std::size_t getOneDimensionalIndexFrom2D(std::size_t i, std::size_t j);
 
     // Need one more byte for '\0' null terminator.
     std::array<CHAR_INFO, NUM_CHARACTERS + 1> map_{};
 
-    std::unordered_map<BlockType, Block> blocks_{
+    std::unordered_map<BlockType, BlockInfo> blocks_{
         { BlockType::QUAD, { "@@@@", { 2, 2 } } },
         { BlockType::Z, { "+++    +++", { 5, 2 } } },
         { BlockType::T, { "  &  &&&&&", { 5, 2 } } },
@@ -67,6 +76,10 @@ private:
     };
 
     std::unique_ptr<void, consoleDeleter> console_{ nullptr, nullptr };
+
+    MovingBlock block_{};
+
+    float updateFrequency_{ 0.5f };
 
     bool isRunning_{ true };
 };
@@ -84,7 +97,7 @@ Tetris::Tetris()
 {
     prepareConsole();
     prepareMap();
-    createTestBlocks();
+    createMover();
 }
 
 void Tetris::runGame()
@@ -122,19 +135,49 @@ void Tetris::processInput()
 
 void Tetris::update()
 {
+    static auto lastTimeUpdate = hrClock::now();
+
+    auto delta = dtSecs(hrClock::now() - lastTimeUpdate).count();
+
+    if (delta < updateFrequency_)
+    {
+        return;
+    }
+
+    for (int i = block_.size.Y - 1; i >= 0; --i)
+    {
+        for (int j = 0; j < block_.size.X; j++)
+        {
+            auto index1D = getOneDimensionalIndexFrom2D(block_.position.X, block_.position.Y);
+
+            // Start with last line of block in order to prevent clearing relevant characters.
+            auto chIndex = index1D + MAP_WIDTH * i + j;
+
+            // Shift down every character on the current line.
+            map_[chIndex + MAP_WIDTH].Char.UnicodeChar = map_[chIndex].Char.UnicodeChar;
+        }
+    }
+
+    // Clear first line of block, since after shifting process this is not relevant.
+    for (std::size_t i = 0; i < block_.size.X; ++i)
+    {
+        auto index1D = getOneDimensionalIndexFrom2D(block_.position.X, block_.position.Y);
+        map_[index1D + i].Char.UnicodeChar = L' ';
+    }
+
+    block_.position.Y += 1;
+
+    lastTimeUpdate = hrClock::now();
 }
 
 void Tetris::prepareFrames()
 {
-    using deltaTime = std::chrono::duration<float, std::milli>;
-    using hrClock = std::chrono::high_resolution_clock;
-
     constexpr short FRAMES = 60;
     constexpr float GAME_TICK = static_cast<float>(1) / FRAMES;
 
     static auto prevTickTime = hrClock::now();
 
-    float realFrameDuration = deltaTime(hrClock::now() - prevTickTime).count();
+    float realFrameDuration = dtMilli(hrClock::now() - prevTickTime).count();
     float tickRemainingTime = GAME_TICK - realFrameDuration;
 
     if (tickRemainingTime < 0)
@@ -143,7 +186,7 @@ void Tetris::prepareFrames()
         return;
     }
 
-    auto sleepDelta = deltaTime(tickRemainingTime);
+    auto sleepDelta = dtMilli(tickRemainingTime);
 
     std::this_thread::sleep_for(sleepDelta);
 
@@ -201,7 +244,8 @@ void Tetris::createBlock(BlockType blockType, const COORD& position)
     {
         for (size_t j = 0; j < blockWidth; j++)
         {
-            const auto realPos = position.X + position.Y * MAP_WIDTH + i * MAP_WIDTH + j;
+            auto index1D = getOneDimensionalIndexFrom2D(position.X, position.Y);
+            auto realPos = index1D + i * MAP_WIDTH + j;
             map_[realPos].Char.UnicodeChar = block.representation[j + i * blockWidth];
         }
     }
@@ -210,7 +254,7 @@ void Tetris::createBlock(BlockType blockType, const COORD& position)
 void Tetris::createTestBlocks()
 {
     // Test function which just creates all blocks on random positions.
-    auto generateRandomBlockPosition = [](const Block& block) {
+    auto generateRandomBlockPosition = [](const BlockInfo& block) {
         short maxX = MAP_WIDTH - block.size.X;
         short maxY = MAP_HEIGHT - block.size.Y;
         short minX = 1;
@@ -227,4 +271,20 @@ void Tetris::createTestBlocks()
         const auto pos = generateRandomBlockPosition(block);
         createBlock(type, pos);
     }
+}
+
+void Tetris::createMover()
+{
+    auto type = BlockType::T;
+    auto pos = COORD{ (MAP_WIDTH >> 1) - 1, 0 };
+
+    block_.position = pos;
+    block_.size = blocks_[type].size;
+
+    createBlock(type, pos);
+}
+
+std::size_t Tetris::getOneDimensionalIndexFrom2D(std::size_t x, std::size_t y)
+{
+    return x + y * MAP_WIDTH;
 }
