@@ -77,7 +77,7 @@ private:
 
     std::unique_ptr<void, consoleDeleter> console_{ nullptr, nullptr };
 
-    MovingBlock block_{};
+    MovingBlock mover_{};
 
     float updateFrequency_{ 0.5f };
 
@@ -144,11 +144,11 @@ void Tetris::update()
         return;
     }
 
-    for (int i = block_.size.Y - 1; i >= 0; --i)
+    for (int i = mover_.size.Y - 1; i >= 0; --i)
     {
-        for (int j = 0; j < block_.size.X; j++)
+        for (int j = 0; j < mover_.size.X; j++)
         {
-            auto index1D = getOneDimensionalIndexFrom2D(block_.position.X, block_.position.Y);
+            auto index1D = getOneDimensionalIndexFrom2D(mover_.position.X, mover_.position.Y);
 
             // Start with last line of block in order to prevent clearing relevant characters.
             auto chIndex = index1D + MAP_WIDTH * i + j;
@@ -159,13 +159,13 @@ void Tetris::update()
     }
 
     // Clear first line of block, since after shifting process this is not relevant.
-    for (std::size_t i = 0; i < block_.size.X; ++i)
+    for (std::size_t i = 0; i < mover_.size.X; ++i)
     {
-        auto index1D = getOneDimensionalIndexFrom2D(block_.position.X, block_.position.Y);
+        auto index1D = getOneDimensionalIndexFrom2D(mover_.position.X, mover_.position.Y);
         map_[index1D + i].Char.UnicodeChar = L' ';
     }
 
-    block_.position.Y += 1;
+    mover_.position.Y += 1;
 
     lastTimeUpdate = hrClock::now();
 }
@@ -278,8 +278,8 @@ void Tetris::createMover()
     auto type = BlockType::T;
     auto pos = COORD{ (MAP_WIDTH >> 1) - 1, 0 };
 
-    block_.position = pos;
-    block_.size = blocks_[type].size;
+    mover_.position = pos;
+    mover_.size = blocks_[type].size;
 
     createBlock(type, pos);
 }
