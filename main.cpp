@@ -62,24 +62,27 @@ private:
     void createBlock(BlockType type, const COORD& position);
     void createTestBlocks();
     void createMover();
-    std::size_t getOneDimensionalIndexFrom2D(std::size_t i, std::size_t j);
+    void movePiece();
+    bool isCollidable() const;
+
+    std::size_t getOneDimensionalIndexFrom2D(std::size_t i, std::size_t j) const;
 
     // Need one more byte for '\0' null terminator.
     std::array<CHAR_INFO, NUM_CHARACTERS + 1> map_{};
 
     std::unordered_map<BlockType, BlockInfo> blocks_{
         { BlockType::QUAD, { "@@@@", { 2, 2 } } },
-        { BlockType::Z, { "+++    +++", { 5, 2 } } },
-        { BlockType::T, { "  &  &&&&&", { 5, 2 } } },
-        { BlockType::L, { "%   %%%%", { 4, 2 } } },
-        { BlockType::I, { "KKK", { 1, 3 } } },
+        { BlockType::Z, { "@@@    @@@", { 5, 2 } } },
+        { BlockType::T, { "  @  @@@@@", { 5, 2 } } },
+        { BlockType::L, { "@   @@@@", { 4, 2 } } },
+        { BlockType::I, { "@@@", { 1, 3 } } },
     };
 
     std::unique_ptr<void, consoleDeleter> console_{ nullptr, nullptr };
 
     MovingBlock mover_{};
 
-    float updateFrequency_{ 0.5f };
+    float updateFrequency_{ 0.1f };
 
     bool isRunning_{ true };
 };
@@ -144,28 +147,7 @@ void Tetris::update()
         return;
     }
 
-    for (int i = mover_.size.Y - 1; i >= 0; --i)
-    {
-        for (int j = 0; j < mover_.size.X; j++)
-        {
-            auto index1D = getOneDimensionalIndexFrom2D(mover_.position.X, mover_.position.Y);
-
-            // Start with last line of block in order to prevent clearing relevant characters.
-            auto chIndex = index1D + MAP_WIDTH * i + j;
-
-            // Shift down every character on the current line.
-            map_[chIndex + MAP_WIDTH].Char.UnicodeChar = map_[chIndex].Char.UnicodeChar;
-        }
-    }
-
-    // Clear first line of block, since after shifting process this is not relevant.
-    for (std::size_t i = 0; i < mover_.size.X; ++i)
-    {
-        auto index1D = getOneDimensionalIndexFrom2D(mover_.position.X, mover_.position.Y);
-        map_[index1D + i].Char.UnicodeChar = L' ';
-    }
-
-    mover_.position.Y += 1;
+    movePiece();
 
     lastTimeUpdate = hrClock::now();
 }
@@ -240,11 +222,12 @@ void Tetris::createBlock(BlockType blockType, const COORD& position)
     const auto blockWidth = block.size.X;
     const auto blockHeight = block.size.Y;
 
+    auto index1D = getOneDimensionalIndexFrom2D(position.X, position.Y);
+
     for (std::size_t i = 0; i < blockHeight; ++i)
     {
         for (size_t j = 0; j < blockWidth; j++)
         {
-            auto index1D = getOneDimensionalIndexFrom2D(position.X, position.Y);
             auto realPos = index1D + i * MAP_WIDTH + j;
             map_[realPos].Char.UnicodeChar = block.representation[j + i * blockWidth];
         }
@@ -284,7 +267,55 @@ void Tetris::createMover()
     createBlock(type, pos);
 }
 
-std::size_t Tetris::getOneDimensionalIndexFrom2D(std::size_t x, std::size_t y)
+void Tetris::movePiece()
+{
+    if (isCollidable())
+    {
+        return;
+    }
+
+    auto startIndex1D = getOneDimensionalIndexFrom2D(mover_.position.X, mover_.position.Y);
+
+    for (int i = mover_.size.Y - 1; i >= 0; --i)
+    {
+        for (int j = 0; j < mover_.size.X; j++)
+        {
+            // Start with last line of block in order to prevent clearing relevant characters.
+            auto chIndex = startIndex1D + MAP_WIDTH * i + j;
+
+            // Shift down every character on the current line.
+            map_[chIndex + MAP_WIDTH].Char.UnicodeChar = map_[chIndex].Char.UnicodeChar;
+        }
+    }
+
+    // Clear first line of block, since after shifting process this is not relevant.
+    for (std::size_t i = 0; i < mover_.size.X; ++i)
+    {
+        map_[startIndex1D + i].Char.UnicodeChar = L'\0';
+    }
+
+    mover_.position.Y += 1;
+}
+
+bool Tetris::isCollidable() const
+{
+    auto bottomLeftY = mover_.position.Y + mover_.size.Y;
+    auto bottomLeftX = mover_.position.X;
+    auto index = bottomLeftX + bottomLeftY * MAP_WIDTH;
+
+    for (int i = 0; i < mover_.size.X; ++i)
+    {
+        auto ch = map_[index + i].Char.UnicodeChar;
+        if (ch == L'@' || ch == L'#')
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+std::size_t Tetris::getOneDimensionalIndexFrom2D(std::size_t x, std::size_t y) const
 {
     return x + y * MAP_WIDTH;
 }
