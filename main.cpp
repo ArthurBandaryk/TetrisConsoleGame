@@ -134,6 +134,21 @@ void Tetris::renderScene()
 
 void Tetris::processInput()
 {
+    // GetAsyncKeyState returns result as 'short' type.
+    // To check, whether the specific button was pressed
+    // or released we should check the most significant
+    // bit from returning value (1 - button was pressed,
+    // 0 - button was released.
+    constexpr short MOST_SIGNIFICANT_BIT = 0x8000; // 1000 0000 0000 0000b
+
+    if (GetAsyncKeyState(VK_LEFT) & MOST_SIGNIFICANT_BIT)
+    {
+        // Move piece to the left.
+    }
+    else if (GetAsyncKeyState(VK_RIGHT) & MOST_SIGNIFICANT_BIT)
+    {
+        // Move piece to the right.
+    }
 }
 
 void Tetris::update()
