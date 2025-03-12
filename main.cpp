@@ -301,11 +301,12 @@ bool Tetris::isCollidable() const
 {
     auto bottomLeftY = mover_.position.Y + mover_.size.Y;
     auto bottomLeftX = mover_.position.X;
-    auto index = bottomLeftX + bottomLeftY * MAP_WIDTH;
+    auto index = getOneDimensionalIndexFrom2D(bottomLeftX, bottomLeftY);
 
     for (int i = 0; i < mover_.size.X; ++i)
     {
         auto ch = map_[index + i].Char.UnicodeChar;
+
         if (ch == L'@' || ch == L'#')
         {
             return true;
