@@ -156,7 +156,8 @@ void Tetris::processInput()
     {
         // Move piece to the left.
     }
-    else if (isKeyPressed(GetAsyncKeyState(VK_RIGHT)))
+
+    if (isKeyPressed(GetAsyncKeyState(VK_RIGHT)))
     {
         // Move piece to the right.
     }
