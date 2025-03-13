@@ -65,18 +65,7 @@ private:
     void createMover();
     void movePiece();
     bool isCollidable() const;
-
-    template<typename T>
-    bool isKeyPressed(T res)
-    {
-        static_assert(std::is_integral_v<T>,
-                      "Argument must have integral type");
-
-        constexpr std::uint8_t BITS_IN_BYTE = 8;
-        constexpr std::int64_t MOST_SIGNIFICANT_BIT_MASK = 1 << (sizeof(T) * BITS_IN_BYTE);
-
-        return res & MOST_SIGNIFICANT_BIT_MASK;
-    }
+    bool isKeyPressed(int key) const;
 
     std::size_t getOneDimensionalIndexFrom2D(std::size_t i, std::size_t j) const;
 
@@ -147,17 +136,12 @@ void Tetris::renderScene()
 
 void Tetris::processInput()
 {
-    // GetAsyncKeyState returns result as 'short' type.
-    // To check, whether the specific button was pressed
-    // or released we should check the most significant
-    // bit from returning value (1 - button was pressed,
-    // 0 - button was released.
-    if (isKeyPressed(GetAsyncKeyState(VK_LEFT)))
+    if (isKeyPressed(VK_LEFT))
     {
         // Move piece to the left.
     }
 
-    if (isKeyPressed(GetAsyncKeyState(VK_RIGHT)))
+    if (isKeyPressed(VK_RIGHT))
     {
         // Move piece to the right.
     }
@@ -341,6 +325,21 @@ bool Tetris::isCollidable() const
     }
 
     return false;
+}
+
+bool Tetris::isKeyPressed(int key) const
+{
+    // GetAsyncKeyState returns result as 'short' type.
+    // To check, whether the specific button was pressed
+    // or released we should check the most significant
+    // bit from returning value (1 - button was pressed,
+    // 0 - button was released.
+    auto result = GetAsyncKeyState(key);
+
+    constexpr std::uint8_t BITS_IN_BYTE = 8;
+    constexpr std::int64_t MOST_SIGNIFICANT_BIT_MASK = 1 << (sizeof(result) * BITS_IN_BYTE);
+
+    return result & MOST_SIGNIFICANT_BIT_MASK;
 }
 
 std::size_t Tetris::getOneDimensionalIndexFrom2D(std::size_t x, std::size_t y) const
