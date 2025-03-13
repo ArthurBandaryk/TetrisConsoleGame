@@ -5,6 +5,7 @@
 #include <array>
 #include <cassert>
 #include <chrono>
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <thread>
@@ -64,6 +65,18 @@ private:
     void createMover();
     void movePiece();
     bool isCollidable() const;
+
+    template<typename T>
+    bool isKeyPressed(T res)
+    {
+        static_assert(std::is_integral_v<T>,
+                      "Argument must have integral type");
+
+        constexpr std::uint8_t BITS_IN_BYTE = 8;
+        constexpr std::int64_t MOST_SIGNIFICANT_BIT_MASK = 1 << (sizeof(T) * BITS_IN_BYTE);
+
+        return res & MOST_SIGNIFICANT_BIT_MASK;
+    }
 
     std::size_t getOneDimensionalIndexFrom2D(std::size_t i, std::size_t j) const;
 
@@ -139,13 +152,11 @@ void Tetris::processInput()
     // or released we should check the most significant
     // bit from returning value (1 - button was pressed,
     // 0 - button was released.
-    constexpr short MOST_SIGNIFICANT_BIT = 0x8000; // 1000 0000 0000 0000b
-
-    if (GetAsyncKeyState(VK_LEFT) & MOST_SIGNIFICANT_BIT)
+    if (isKeyPressed(GetAsyncKeyState(VK_LEFT)))
     {
         // Move piece to the left.
     }
-    else if (GetAsyncKeyState(VK_RIGHT) & MOST_SIGNIFICANT_BIT)
+    else if (isKeyPressed(GetAsyncKeyState(VK_RIGHT)))
     {
         // Move piece to the right.
     }
