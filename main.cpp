@@ -145,6 +145,11 @@ void Tetris::processInput()
     {
         // Move piece to the right.
     }
+
+    if (isKeyPressed(VK_DOWN))
+    {
+        // Move piece down.
+    }
 }
 
 void Tetris::update()
@@ -337,7 +342,7 @@ bool Tetris::isKeyPressed(int key) const
     auto result = GetAsyncKeyState(key);
 
     constexpr std::uint8_t BITS_IN_BYTE = 8;
-    constexpr std::int64_t MOST_SIGNIFICANT_BIT_MASK = 1 << (sizeof(result) * BITS_IN_BYTE);
+    const std::int64_t MOST_SIGNIFICANT_BIT_MASK = 1 << (sizeof(result) * BITS_IN_BYTE);
 
     return result & MOST_SIGNIFICANT_BIT_MASK;
 }
